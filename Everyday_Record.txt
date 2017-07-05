@@ -1,0 +1,788 @@
+﻿5.8
+
+9:37
+ExecutorService
+public interface ExecutorService extends Executor
+public abstract class AbstractExecutorService implements ExecutorService
+public class ThreadPoolExecutor extends AbstractExecutorService
+
+public interface Executor {
+    void execute(Runnable command);
+}
+
+到这里，大家应该明白了ThreadPoolExecutor、AbstractExecutorService、ExecutorService和Executor几个之间的关系了。
+
+　　Executor是一个顶层接口，在它里面只声明了一个方法execute(Runnable)，返回值为void，参数为Runnable类型，从字面意思可以理解，就是用来执行传进去的任务的；
+
+　　然后ExecutorService接口继承了Executor接口，并声明了一些方法：submit、invokeAll、invokeAny以及shutDown等；
+
+　　抽象类AbstractExecutorService实现了ExecutorService接口，基本实现了ExecutorService中声明的所有方法；
+
+　　然后ThreadPoolExecutor继承了类AbstractExecutorService。
+
+Executor(interface)
+	ExecutorService(interface)	
+		AbstractExecutorService(class)
+			ThreadPoolExecutor(class)
+			
+			
+　　在ThreadPoolExecutor类中有几个非常重要的方法：
+
+execute()	实际上是Executor中声明的方法，在ThreadPoolExecutor进行了具体的实现，这个方法是ThreadPoolExecutor的核心方法，通过这个方法可以向线程池提交一个任务，
+				交由线程池去执行。
+submit()	方法是在ExecutorService中声明的方法，在AbstractExecutorService就已经有了具体的实现，在ThreadPoolExecutor中并没有对其进行重写，
+				这个方法也是用来向线程池提交任务的，但是它和execute()方法不同，它能够返回任务执行的结果，去看submit()方法的实现，
+				会发现它实际上还是调用的execute()方法，只不过它利用了Future来获取任务执行结果
+shutdown()
+shutdownNow()	是用来关闭线程池的。
+还有很多其他的方法：
+　　比如：getQueue() 、getPoolSize() 、getActiveCount()、getCompletedTaskCount()等获取与线程池相关属性的方法，有兴趣的朋友可以自行查阅API。
+
+就像大家更熟悉的const一样，volatile是一个类型修饰符（type specifier）。它是被设计用来修饰被不同线程访问和修改的变量。
+原子性指事务的一个完整操作。操作成功则提交，失败则回滚，即一件事要做就做完整，要么就什么都不做。
+
+
+volatile的作用是： 作为指令关键字，确保本条指令不会因编译器的优化而省略，且要求每次直接读值.
+简单地说就是防止编译器对代码进行优化.比如如下程序：
+XBYTE[2]=0x55;
+XBYTE[2]=0x56;
+XBYTE[2]=0x57;
+XBYTE[2]=0x58;
+对外部硬件而言，上述四条语句分别表示不同的操作，会产生四种不同的动作，但是编译器却会对上述四条语句进行优化，认为只有XBYTE[2]=0x58
+（即忽略前三条语句，只产生一条机器代码）。如果键入volatile，则编译器会逐一的进行编译并产生相应的机器代码（产生四条代码）.
+1）. 并行设备的硬件寄存器（如：状态寄存器）
+2）. 一个中断服务子程序中会访问到的非自动变量（Non-automatic variables)
+3）. 多线程应用中被几个任务共享的变量           不能只应用最后一次变化，以为前面的 变化都是有用的。
+
+当创建线程时，初始 线程池处于 RUNNING
+调用shutdown()方法：shutdown	此时不能接受新的任务，会等待所有的任务执行完毕
+调用shutdownow()方法：stop		此时不能接受新的任务，并且会尝试终止正在执行的任务	
+							并且所有工作线程已经销毁，任务缓存队列已经清空或执行结束后，处于terminated
+
+							
+核心code：在ThreadPoolExecutor中实现的
+public void execute(Runnable command) {
+    if (command == null)
+        throw new NullPointerException();
+    if (poolSize >= corePoolSize || !addIfUnderCorePoolSize(command)) {
+        if (runState == RUNNING && workQueue.offer(command)) {
+            if (runState != RUNNING || poolSize == 0)
+                ensureQueuedTaskHandled(command);
+        }
+        else if (!addIfUnderMaximumPoolSize(command))
+            reject(command); // is shutdown or saturated
+    }
+}
+到这里，大部分朋友应该对任务提交给线程池之后到被执行的整个过程有了一个基本的了解，下面总结一下：
+　　1）首先，要清楚corePoolSize和maximumPoolSize的含义；
+　　2）其次，要知道Worker是用来起到什么作用的；
+　　3）要知道任务提交给线程池之后的处理策略，这里总结一下主要有4点：
+
+如果当前线程池中的线程数目小于corePoolSize，则每来一个任务，就会创建一个线程去执行这个任务；
+如果当前线程池中的线程数目>=corePoolSize，则每来一个任务，会尝试将其添加到任务缓存队列当中，若添加成功，则该任务会等待空闲线程将其取出去执行；
+							若添加失败（一般来说是任务缓存队列已满），则会尝试创建新的线程去执行这个任务；
+如果当前线程池中的线程数目达到maximumPoolSize，则会采取任务拒绝策略进行处理；
+如果线程池中的线程数量大于 corePoolSize时，如果某线程空闲时间超过keepAliveTime，线程将被终止，直至线程池中的线程数目不大于corePoolSize；
+							如果允许为核心池中的线程设置存活时间，那么核心池中的线程空闲时间超过keepAliveTime，线程也会被终止。
+
+http://www.cnblogs.com/absfree/p/5357118.html   有时间深入理解一下execute的过程。
+
+
+10:44
+感觉自己注意力集中时间好短。。。
+
+public class ThreadPoolExecutor extends AbstractExecutorService {
+    .....
+    public ThreadPoolExecutor(int corePoolSize,int maximumPoolSize,long keepAliveTime,TimeUnit unit,
+            BlockingQueue<Runnable> workQueue);
+ 
+    public ThreadPoolExecutor(int corePoolSize,int maximumPoolSize,long keepAliveTime,TimeUnit unit,
+            BlockingQueue<Runnable> workQueue,ThreadFactory threadFactory);
+ 
+    public ThreadPoolExecutor(int corePoolSize,int maximumPoolSize,long keepAliveTime,TimeUnit unit,
+            BlockingQueue<Runnable> workQueue,RejectedExecutionHandler handler);
+ 
+    public ThreadPoolExecutor(int corePoolSize,int maximumPoolSize,long keepAliveTime,TimeUnit unit,
+        BlockingQueue<Runnable> workQueue,ThreadFactory threadFactory,RejectedExecutionHandler handler);
+    ...
+	//最后一个是最全的，其实都是基于最后一个
+}
+　workQueue的类型为BlockingQueue<Runnable>，通常可以取下面三种类型：
+
+　　1）ArrayBlockingQueue：基于数组的先进先出队列，此队列创建时必须指定大小；
+　　2）LinkedBlockingQueue：基于链表的先进先出队列，如果创建时没有指定此队列大小，则默认为Integer.MAX_VALUE；
+　　3）synchronousQueue：这个队列比较特殊，它不会保存提交的任务，而是将直接新建一个线程来执行新来的任务。
+
+
+
+class Task implements Runnable{
+
+}
+
+15:39
+今天下午想了好长时间
+很不好！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+可是我都能预见的现实，我知道你在未来的某一天会离开，会离开我，或者是你的心从来就没在过。
+
+下午学点不好
+
+
+晚上
+
+
+5.9
+今天8:30之前来的
+8:55 Really Begin
+
+git init
+git commmit -m ""
+git remote add origin https://
+git pull origin master
+git push -u origin master 
+
+13:41
+看了一些 DM/ML的知识
+
+18:30
+Titanic: Machine Learning from Disaster
+
+
+Variable	Definition	Key
+survival	Survival	0 = No, 1 = Yes
+pclass	Ticket class	1 = 1st, 2 = 2nd, 3 = 3rd
+sex	Sex	
+Age	Age in years	
+sibsp	# of siblings / spouses aboard the Titanic	  配偶
+parch	# of parents / children aboard the Titanic	  孩子
+ticket	Ticket number	
+fare	Passenger fare	 
+cabin	Cabin number	                              cabin小屋
+embarked	Port of Embarkation登船	C = Cherbourg,瑟堡  Q = Queenstown,皇后镇 S = Southampton南安普顿
+
+
+5.10 今天完成Titanic：Machine Learing From Disaster
+
+
+
+<property  name="url" value="jdbc:oracle:thin:@192.9.99.135:1521:emrep" ></property> 
+		<property name="username" value="dx_test"></property>
+		<property name="password" value="dx_test"></property>
+
+python:
+很多数据是从网上下载而来，数据的格式可能是csv，那么pandas可以很容易的从csv格式的文件中读取数据，下面我们来看看具体的过程：
+使用pandas下的read_csv方法，读取csv文件，参数是文件的路径，这是一个相对路径，是相对于当前工作目录的，那么如何知道当前的工作目录呢？
+	import os
+	os.getcwd()
+
+pandas.read_csv参数整理
+ 
+读取CSV（逗号分割）文件到DataFrame
+也支持文件的部分导入和选择迭代
+
+pandas是python环境下最有名的数据统计包，而DataFrame翻译为数据框，是一种数据组织方式，这么说你可能无法从感性上认识它，
+举个例子，你大概用过Excel，而它也是一种数据组织和呈现的方式，简单说就是表格，而在在pandas中用DataFrame组织数据，
+如果你不print DataFrame，你看不到这些数据，下面我们来看看DataFrame是如何使用的
+
+>>> import numpy as np
+>>> import pandas as pd
+>>> test1=pd.DataFrame(np.random.randn(4,4),index=[1,2,3,4],columns=list('abcd'))
+>>> test1
+          a         b         c         d
+1  0.036916  1.433757  0.068457  1.090690
+2 -0.498141 -0.322391  0.933056 -1.273440
+3  0.004221 -0.272053 -1.040528  0.549448
+4  2.580923 -2.562013 -1.754360  2.345825
+>>> 
+
+
+使用head查看前几行数据（默认是前5行），不过你可以指定前几行
+
+>>> t1.head()
+          A         B         C         D
+1 -0.349043  0.024792 -0.781560 -0.635958
+2 -1.141989 -0.091598  0.837050 -0.283985
+3 -0.078283  0.031236  0.334371  0.209107
+4  0.639584 -0.658210 -0.859850  0.701910
+5  1.168426  1.271085  0.189614  0.978134
+>>> t1.head(1)
+          A         B        C         D
+1 -0.349043  0.024792 -0.78156 -0.635958
+
+使用tail查看后5行数据
+		
+>>> t1.describe()
+              A         B         C         D
+count  8.000000  8.000000  8.000000  8.000000
+mean   0.049278  0.209531 -0.315083 -0.076697
+std    0.828004  1.041325  0.751350  0.891621
+min   -1.141989 -1.371196 -1.433952 -1.668993
+25%   -0.463597 -0.233251 -0.801132 -0.614013
+50%   -0.047700  0.028014 -0.403167 -0.037439
+75%    0.724665  0.726661  0.225803  0.695157
+max    1.168426  1.924955  0.837050  0.978134
+>>> 		
+
+axis=0表述列 
+axis=1表述行
+
+
+来试验一下 python pandas处理数据的能力，，，嘿嘿
+
+
+删除pandas DataFrame的某一/几列：
+方法一：直接del DF['column-name']
+方法二：采用drop方法，有下面三种等价的表达式：
+1. DF= DF.drop('column_name', 1)；
+2. DF.drop('column_name',axis=1, inplace=True)
+3. DF.drop([DF.columns[[0,1, 3]]], axis=1,inplace=True)   # Note: zero indexed
+注意：凡是会对原数组作出修改并返回一个新数组的，往往都有一个 inplace可选参数。
+如果手动设定为True（默认为False），那么原数组直接就被替换。也就是说，采用inplace=True之后，
+原数组名（如2和3情况所示）对应的内存值直接改变；而采用inplace=False之后，原数组名对应的内存
+值并不改变，需要将新的结果赋给一个新的数组或者覆盖原数组的内存位置（如1情况所示）。		
+		
+pandas 是基于 Numpy 构建的含有更高级数据结构和工具的数据分析包
+类似于 Numpy 的核心是 ndarray，pandas 也是围绕着 Series 和 DataFrame 两个核心数据结构展开的 。
+Series 和 DataFrame 分别对应于一维的序列和二维的表结构。
+	
+		
+		
+吴恩达
+1：
+	ML
+		DM
+		Application we can't program by hand
+		Self-customizing programs\
+		Understanding human learning (brain, real AI).
+		
+
+
+
+
+5-15
+不知道该怎么学习。
+以为很难，很艰难，很复杂，很无力。
+不知道该从何下手。
+
+正则：
+
+	/**
+	 * [abc] a、b 或 c（简单类） 
+		[^abc] 任何字符，除了 a、b 或 c（否定） 
+		[a-zA-Z] a 到 z 或 A 到 Z，两头的字母包括在内（范围） 
+		[a-d[m-p]] a 到 d 或 m 到 p：[a-dm-p]（并集） 
+		[a-z&&[def]] d、e 或 f（交集） 
+		[a-z&&[^bc]] a 到 z，除了 b 和 c：[ad-z]（减去） 
+		[a-z&&[^m-p]] a 到 z，而非 m 到 p：[a-lq-z]（减去） 
+
+	 */
+	注意 并集，交集，
+	
+	预定义字符类
+.	任何字符（与行结束符可能匹配也可能不匹配）
+\d	数字：[0-9]
+\D	非数字： [^0-9]
+\s	空白字符：[ \t\n\x0B\f\r]
+\S	非空白字符：[^\s]
+\w	单词字符：[a-zA-Z_0-9]
+\W	非单词字符：[^\w]
+
+今天都学了啥？
+
+
+5.16
+
+B域和网络域专项稽核
+
+
+功能点列表：
+	本模板包括三个sheet：1、《项目基本信息》  2、《功能点列表》  3、《影响因素情况列表》		
+软件工作量评估：
+	软件评估模板包括四个sheet：1、《项目基本信息》  2、《未调整工作量评估》  3、《调整因子评估》 4、《调整后工作量评估结果》 				
+软件工作量评估标准：
+	基准工作量标准		功能复杂度界定标准		调整因子影响度界定标准		计算公式
+[
+	code_calculation:
+
+]
+	
+	
+	
+	
+	
+	
+JAVA_5_16：
+[
+1：动态代理：为了保护真实的类不让他直接被访问。
+2：然后我又开始学java web基础的东西了。。。。
+3：
+
+]
+
+
+
+
+如遇压缩包需要解压密码，请使用下列密码（三选一）进行解压：
+解压密码: www.lthack.com
+解压密码: 2cifang.com
+解压密码: 2cifang.com_2次方学习
+
+
+HTTP/1.1 200 OK
+Server: Apache-Coyote/1.1
+Content-Type: text/html;charset=UTF-8
+Content-Length: 1517
+Date: Tue, 06 Jun 2017 06:42:33 GMT
+
+POST /self_audit/pritab/tableClassesTree.do HTTP/1.1
+Host: localhost:8080
+Connection: keep-alive
+Content-Length: 9
+Accept: application/json, text/javascript, */*; q=0.01
+Origin: http://localhost:8080
+X-Requested-With: XMLHttpRequest
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.104 Safari/537.36 Core/1.53.2669.400 QQBrowser/9.6.10990.400
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+Referer: http://localhost:8080/self_audit/auth/login.do?
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.8
+Cookie: JSESSIONID=rRHSGit5ueyGQD+fTBC6RpPk.undefined; _ga=GA1.1.868265892.1495937645
+
+六月 13, 2017 3:05:48 下午 org.springframework.context.support.AbstractApplicationContext prepareRefresh
+信息: Refreshing org.springframework.context.support.ClassPathXmlApplicationContext@1cad8848: startup date [Tue Jun 13 15:05:48 CST 2017]; root of context hierarchy
+六月 13, 2017 3:05:48 下午 org.springframework.beans.factory.xml.XmlBeanDefinitionReader loadBeanDefinitions
+信息: Loading XML bean definitions from class path resource [com/study/IOCtest/beans.xml]
+六月 13, 2017 3:05:48 下午 org.springframework.beans.factory.support.DefaultListableBeanFactory preInstantiateSingletons
+信息: Pre-instantiating singletons in org.springframework.beans.factory.support.DefaultListableBeanFactory@781ba187: defining beans [userserviceID]; root of factory hierarchy
+add userservices
+add userservices
+
+git reset --hard
+git pull
+
+
+
+
+
+
+
+package com.heima.reflect;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+
+public class Demo2_Reflect {
+
+	/**
+	 * * ????(Juicer)???????
+	 * ????????(Fruit)???(Apple)??(Banana)????(Orange)??(squeeze)
+	 * @throws IOException 
+	 */
+	public static void main(String[] args) throws Exception {
+		Juicer j = new Juicer();									//????????
+		//j.run(new Apple());
+		//j.run(new Orange());
+		BufferedReader br = new BufferedReader(new FileReader("config.properties"));
+		Class clazz = Class.forName(br.readLine());					//????????????????
+		Fruit f =     (Fruit) clazz.newInstance();						//??????????
+		Object o=clazz.newInstance();
+		j.run(f);
+	}
+}
+interface Fruit {
+	public void squeeze();
+}
+class Apple implements Fruit {
+	public void squeeze() {
+		System.out.println("????????????");
+	}
+}
+
+class Orange implements Fruit {
+	public void squeeze() {
+		System.out.println("?????????????");
+	}
+}
+
+class Juicer {
+	/*public void run(Apple a) {
+		a.squeeze();
+	}
+	
+	public void run(Orange o) {
+		o.squeeze();
+	}*/
+	
+	public void run(Fruit f) {
+		f.squeeze();
+	}
+}
+
+
+public class Test2 {
+int x=10;
+public int getTest2(){
+return x;
+}
+}
+public class Test3 extends Test2{
+int x=100;
+public int getTest3(){
+return x;
+}
+
+public 
+Test2 test3=new Test3();
+System.out.println(test3.getTest2());
+System.out.println(test3.getTest3());//此处报错，不能理解
+}
+}
+
+父类引用指向子类对象。
+Father person =new Son();
+class Father{
+	public void eat();
+	public void play();
+	public void scientist();
+}
+class Son{
+	public void eat();
+	public void play();
+	public void code_farmer();
+}
+person.eat();
+person.play();
+person.scientist();
+
+target
+joinpoint
+pointcut
+
+advice
+weaving
+proxy
+aspect
+C:\ProgramData\Oracle\Java\javapath;%SystemRoot%\system32;%SystemRoot%;%SystemRoot%\System32\Wbem;%SYSTEMROOT%\System32\WindowsPowerShell\v1.0\;%JAVA_HOME%\bin;%JAVA_HOME%\jre\bin;D:\Java\scala\bin;D:\标签库\软件\sbt\bin;C:\P;ogram Files\TortoiseSVN\bin;D:\TortoiseGit\bin
+
+
+/Test_tx2/src/Dao.java
+/ee19_spring_day03_web
+
+ Initializing c3p0 pool... com.mchange.v2.c3p0.ComboPooledDataSource [ acquireIncrement -> 3, acquireRetryAttempts -> 30, acquireRetryDelay -> 1000, autoCommitOnClose -> false, automaticTestTable -> null, breakAfterAcquireFailure -> false, checkoutTimeout -> 0, connectionCustomizerClassName -> null, connectionTesterClassName -> com.mchange.v2.c3p0.impl.DefaultConnectionTester, dataSourceName -> 1hgery99o1igwh3r1r7a1f6|765cfd1d, debugUnreturnedConnectionStackTraces -> false, description -> null, driverClass -> com.mysql.jdbc.Driver, factoryClassLocation -> null, forceIgnoreUnresolvedTransactions -> false, identityToken -> 1hgery99o1igwh3r1r7a1f6|765cfd1d, idleConnectionTestPeriod -> 0, initialPoolSize -> 3, jdbcUrl -> jdbc:mysql://localhost:3306/transfer_account, maxAdministrativeTaskTime -> 0, maxConnectionAge -> 0, maxIdleTime -> 0, maxIdleTimeExcessConnections -> 0, maxPoolSize -> 15, maxStatements -> 0, maxStatementsPerConnection -> 0, minPoolSize -> 3, numHelperThreads -> 3, numThreadsAwaitingCheckoutDefaultUser -> 0, preferredTestQuery -> null, properties -> {user=******, password=******}, propertyCycle -> 0, testConnectionOnCheckin -> false, testConnectionOnCheckout -> false, unreturnedConnectionTimeout -> 0, usesTraditionalReflectiveProxies -> false ]
+
+
+
+
+
+
+package com.lll.study.test;
+
+import org.junit.Test;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+import com.lll.study.service.Service_Account;
+
+public class TestApp {
+	
+	@Test
+	public void demo01(){
+		String xmlPath = "applicationContext.xml";
+		ApplicationContext applicationContext = new ClassPathXmlApplicationContext(xmlPath);
+		Service_Account accountService =  (Service_Account) applicationContext.getBean("accountService");
+		accountService.transfer("jack", "rose", 1000);
+	}
+
+}
+/Web_Basic
+
+
+/springmvc19_day01_01
+/springmvc19_day01_01/config/log4j.properties
+creating bean with name 'org.springframework.web.servlet.handler.SimpleUrlHandlerMapping#0' defined in class path resource [springmvc.xml]: Initialization of bean failed; nested exception is org.springframework.beans.factory.NoSuchBeanDefinitionException: No bean named 'HttpController' is defined
+	org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:532)
+	org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:461)
+	org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:295)
+
+Cannot find class [org.springframework.web.servlet.HttpRequestHandlerAdapter] for bean with name 'org.springframework.web.servlet.HttpRequestHandlerAdapter#0' defined in class path resource [springmvc.xml]; nested exception is java.lang.ClassNotFoundException: org.springframework.web.servlet.HttpRequestHandlerAdapter
+	
+
+	ctsi@2015
+	
+	lscpu  cpu核心数
+	free -m
+	df -h
+	ethtool eth0
+ctsi@2015
+/ee19_spring_day03_ssh3
+
+ssm
+aop   oop
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*==============================================================*/
+/* DBMS name:      MySQL 4.0                                    */
+/* Created on:     2007-6-28 15:25:46                           */
+/*==============================================================*/
+
+
+drop table if exists admin;
+
+drop table if exists answer;
+
+drop table if exists subitem;
+
+drop table if exists item;
+
+drop table if exists question;
+
+drop table if exists user;
+
+/*==============================================================*/
+/* Table: admin                                                 */
+/*==============================================================*/
+create table admin
+(
+   id				  INT		AUTO_INCREMENT PRIMARY KEY ,
+   adminid                        VARCHAR(50)                    not null,
+   adminpwd                       VARCHAR(50)
+) ;
+
+/*==============================================================*/
+/* Table: question                                              */
+/*==============================================================*/
+create table question
+(
+   qid                            int             auto_increment               not null,
+   title                          VARCHAR(50),
+   content                        text,
+   itemid                         int,
+   subid                          int,
+   userid                         VARCHAR(50),
+   grade                          VARCHAR(50),
+   offerscore                     int,
+   status                         int,
+   questiontime                   datetime,
+   clickcount                     int,
+   acceptflag                     int,
+   commenflag                     int,
+   primary key (qid)
+) ;
+
+/*==============================================================*/
+/* Table: answer                                                */
+/*==============================================================*/
+create table answer
+(
+   aid                            int            auto_increment         not null,
+   quesans                        VARCHAR(50),
+   userid                         VARCHAR(50),
+   grade                          VARCHAR(50),
+   anstime                        datetime,
+   status                         int,
+   qid                            int,
+   primary key (aid) ,
+   foreign key (qid) references question(qid) on delete cascade 
+) ;
+
+/*==============================================================*/
+/* Table: item                                                  */
+/*==============================================================*/
+create table item
+(
+   itemid                         int             auto_increment               not null,
+   itemname                       VARCHAR(50),
+   itemcode                       int,
+   primary key (itemid)
+) ;
+
+
+/*==============================================================*/
+/* Table: subitem                                               */
+/*==============================================================*/
+create table subitem
+(
+   subid                          int              auto_increment              not null,
+   subname                        varchar(50),
+   itemid                         int,
+   subcode                        int,
+   primary key (subid) ,
+   foreign key (itemid) references item(itemid) on delete cascade
+) ;
+
+/*==============================================================*/
+/* Table: user                                                  */
+/*==============================================================*/
+create table user
+(
+   id				  INT		AUTO_INCREMENT PRIMARY KEY ,
+   userid                         VARCHAR(50)                  not null ,
+   userpwd                        VARCHAR(50),
+   userques                       VARCHAR(50),
+   userans                        VARCHAR(50),
+   usermail                       VARCHAR(50),
+   integral                       int,
+   grade                          int,
+   sex                            VARCHAR(2),
+   realname                       VARCHAR(50)
+) ;
+
+mysql> select user();
++----------------+
+| user()         |
++----------------+
+| root@localhost |
++----------------+
+1 row in set
+
+mysql> create user lll identified by '123';
+Query OK, 0 rows affected
+mysql> grant all on bos19.* to lll;
+Query OK, 0 rows affected
+
+antlr-2.7.6.jar
+asm-3.3.jar
+asm-commons-3.3.jar
+asm-tree-3.3.jar
+com.springsource.com.mchange.v2.c3p0-0.9.1.2.jar
+com.springsource.org.aopalliance-1.0.0.jar
+com.springsource.org.apache.commons.logging-1.1.1.jar
+com.springsource.org.apache.log4j-1.2.15.jar
+com.springsource.org.aspectj.weaver-1.6.8.RELEASE.jar
+commons-collections-3.1.jar
+commons-fileupload-1.2.2.jar
+commons-io-2.0.1.jar
+commons-lang3-3.1.jar
+dom4j-1.6.1.jar
+freemarker-2.3.19.jar
+hibernate-jpa-2.0-api-1.0.1.Final.jar
+hibernate3.jar
+javassist-3.12.0.GA.jar
+jta-1.1.jar
+mysql-connector-java-5.1.5-bin.jar
+ognl-3.0.5.jar
+slf4j-api-1.6.1.jar
+slf4j-log4j12-1.7.2.jar
+spring-aop-3.2.0.RELEASE.jar
+spring-aspects-3.2.0.RELEASE.jar
+spring-beans-3.2.0.RELEASE.jar
+spring-context-3.2.0.RELEASE.jar
+spring-core-3.2.0.RELEASE.jar
+spring-expression-3.2.0.RELEASE.jar
+spring-jdbc-3.2.0.RELEASE.jar
+spring-orm-3.2.0.RELEASE.jar
+spring-tx-3.2.0.RELEASE.jar
+spring-web-3.2.0.RELEASE.jar
+struts2-core-2.3.7.jar
+struts2-spring-plugin-2.3.7.jar
+xwork-core-2.3.7.jar
+
+ERROR ContextLoader:307 - Context initialization failed
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'sessionFactory' defined in class path resource [applicationContext.xml]: Invocation of init method failed; nested exception is java.io.FileNotFoundException: class path resource [com/study/bos/domain] cannot be resolved to URL because it does not exist
+	at or
+java.lang.IllegalStateException: LifecycleProcessor not initialized - call 'refresh' before invoking lifecycle methods via the context: Root WebApplicationContext: startup date [Thu Jun 29 09:27:22 CST 2017]; root of context hierarchy
+	09:33:56,152  WARN XmlWebApplicationContext:1060 - Exception thrown from LifecycleProcessor on context close
+java.lang.IllegalStateException: LifecycleProcessor not initialized - call 'refresh' before invoking lifecycle methods via the context: Root WebApplicationContext: startup date [Thu Jun 29 09:33:55 CST 2017]; root of context hierarchy
+
+
+public class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        for(int i=0;nums[i]!=null,i++){
+            for(int j=0;nums[j]!=null;j++){
+                if(nums[i]+nums[j]==target){
+                    return [i,j];
+                    break;
+                }
+            }
+        }
+    }
+}
+
+public class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        int temp=nums.length;
+        for(int i=0;i<temp;i++){
+            for(int j=i+1;j<temp;j++){
+                if(nums[i]+nums[j]==target){
+                    return("i"+"j");
+                    break;
+                }
+            }
+        }
+    }
+}
+
+
+
+public class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        int temp=nums.length;
+        int []a=new int[2];
+        s:for(int i=0;i<temp;i++){
+            for(int j=i+1;j<temp;j++){
+                if(nums[i]+nums[j]==target){
+                    a[0]=i;
+                    a[1]=j;
+                    break s;
+                }
+            }
+        }
+        return a;
+    }
+}
+
+
+
+
+/data1/data/dwca/jboss-as-7.1.1.Final
+cd
+
+for(int j=num;j>=0;j--){
+                if(j==num){
+                    y=y+x[j];
+                }else{
+                y=y+x[j]*10*(num-j)
+                }
+            }
+			
+			
+国信接口：
+	后七个都是客户端的。都是类似的
+	第二个是服务端的，
+	
+	
+	1：
+	第一步封装请求参数，json
+	第二步是解析    每个接口都有一个返回参数
+	第三步根据解析的参数处理自己的业务逻辑。
+	
+	eclipse
+	客户端代码生成代码
+	web service client
+		wsdl地址（？wsdl完整地址）
+		输出目录
+		
+	2：
+	新增，修改，失效
+	返回参数
+	是一个servlet
+	
+	通过流来获取参数。getparameter不行。
+	获取参数后来就行业务逻辑作业
+	
+	通过反馈来调整状态。
+	
+oozie接口：
+
+
+add one line
