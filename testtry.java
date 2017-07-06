@@ -9,7 +9,26 @@ public class testtry {
 			System.out.println(i);
 			String []temp2={"a","b"};
 			String aa=temp2[0]+temp2[1];
-			System.out.println(aa);
+			System.out.println(aa);	
+			
+			String []temp3 = null;
+			//temp3[0]="a";
+			//temp3[1]="b";
+			//String bb=temp3[0]+temp3[1];
+			//System.out.print(bb);
+			
+			String tt="fasdfa";
+			System.out.println(tt.length());
+			String a="a";
+			String b="b";
+			String c=a+b;
+			System.out.println(c);
+			
+			System.out.println("---------------------------------");
+			
+		 
+			System.out.println(tt.toCharArray()[0]);
+			
 		}
 		public static void demo1(){
 			System.out.println(12%10);
@@ -54,3 +73,34 @@ public class testtry {
 			System.out.println("-------------------------------");
 		}
 	}
+
+
+
+
+
+
+
+
+
+
+
+public class Solution {
+    public String longestCommonPrefix(String[] strs) {
+        
+        int l_length=strs.length;
+        
+        int []Most_String=new int[l_length];
+        for(int i=0;i<l_length;i++){
+            Most_String[i]=strs[i].length;
+        }
+        for(int i=0;i<l_length;i++)
+        
+        
+        
+        for(int i=0;i<l_length;i++){
+            strs[i].toCharArray[0]
+        }
+            
+        
+    }
+}
