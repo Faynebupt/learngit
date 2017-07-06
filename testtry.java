@@ -1,6 +1,15 @@
 package one;
 public class testtry {
 	public static void main(String[] args) {
+			demo2();
+		}
+		public static void demo2(){
+			String []str={"cc","dddd","323423","3216543243"};
+			int i=str.length;
+			System.out.println(i);
+			String []temp2={"a","b"};
+			String aa=temp2[0]+temp2[1];
+			System.out.println(aa);
 		}
 		public static void demo1(){
 			System.out.println(12%10);
