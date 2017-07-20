@@ -2,6 +2,11 @@
  * 
  */
 package one;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Stack;
+
 /**
 * @author lvliangliang E-mail:lvliangbupt@136.com
 * @version Create time：2017年7月7日 下午2:36:46
@@ -13,11 +18,14 @@ package one;
  */
 public class question20 {
 	public static void main(String[] args) {
-		String a="()()()";
+		String a="[[{}]]()";
 		boolean b=isValid(a);
 		System.out.println(b);
 	}
-	public static boolean isValid(String s) {
+	//这是自己想的，很复杂，而且没有实现，这就是没有学好数据结构的坏处。
+	//面向过程去想这些细节，就变得无比复杂。。哎，
+	//所以王道还是学会利用数据结构的知识。
+	public static boolean isValid1(String s) {
 		char []leftlib={'(','{','['};
 		char []rightlib={')','}',']'};
 		
@@ -95,4 +103,23 @@ public class question20 {
 			}
 		}//最后一个else的后括号
     }
+	public static boolean isValid(String s){
+		Stack<Character> stk=new Stack<Character>();
+		Map<Character,Character> map=new HashMap<Character,Character>();
+		map.put('(',')');
+		map.put('[',']');
+		map.put('{','}');
+		for(int i=0;i<s.length();i++){
+			char c=s.charAt(i);
+			if(c=='('||c=='['||c=='{'){
+				stk.push(c);
+			}else{
+				if(stk.isEmpty()||c!=map.get(stk.pop())){
+					return false;
+				}
+			}
+		}
+		if(stk.isEmpty())return true;
+		return false;
+	}
 }
