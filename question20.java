@@ -103,6 +103,12 @@ public class question20 {
 			}
 		}//最后一个else的后括号
     }
+	/*
+	 * 用了栈，很完美
+	 * E必须是包装类
+	 * MAP很不错，键值对用处很多。
+	 * 然后及时验证。就可以了
+	 */
 	public static boolean isValid(String s){
 		Stack<Character> stk=new Stack<Character>();
 		Map<Character,Character> map=new HashMap<Character,Character>();
