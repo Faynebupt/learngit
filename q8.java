@@ -17,6 +17,14 @@ public class q8 {
 	public static void main(String []args){
 		method(1);
 	}
+	/*
+	 * 这就是所谓的回溯算法
+	 * 在这里是和递归一起体现的
+	 * 主要是递归某一层不进入下一层的时候要注意后面的清理上一步的痕迹。
+	 * 然后就能在形式上是回退一步，因为是清理了上次的痕迹，在这条路的最后阶段，最后两步都结束的时候就会回退两步
+	 * 以此类推，就能回退所有的痕迹。
+	 * 就是所谓的试错法。
+	 */
 	private static void method(int i) {
 		if(i>8){
 			printt(show);
